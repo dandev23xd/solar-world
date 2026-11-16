@@ -1,0 +1,12 @@
+node_modules/
+vendor/
+.env
+*.sqlite
+*.sqlite-journal
+dist/
+public/hot
+public/storage
+storage/*.key
+.phpunit.result.cache
+.DS_Store
+Thumbs.db
