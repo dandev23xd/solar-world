@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Shipment extends Model
@@ -20,6 +21,11 @@ class Shipment extends Model
         'cost' => 'float',
         'days' => 'integer',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('active', fn (Builder $query) => $query->where('shipments.status', '!=', 'Cancelled'));
+    }
 
     public function sale()
     {

@@ -39,7 +39,7 @@ class ShipmentController extends Controller
 
     public function update(Request $request, $id)
     {
-        $shipment = Shipment::find($id);
+        $shipment = Shipment::with('sale')->find($id);
 
         if (! $shipment) {
             return response()->json(['error' => 'Shipment not found'], 404);
@@ -49,7 +49,10 @@ class ShipmentController extends Controller
             'region' => 'required|in:Luzon,Visayas,Mindanao',
             'cost' => 'required|numeric|min:0',
             'days' => 'required|integer|min:0',
+            'status' => 'required|in:Preparing,Packed,Shipped,Delivered',
         ]));
+
+        $shipment->sale?->update(['status' => $shipment->status === 'Delivered' ? 'Delivered' : 'Pending']);
 
         return ['ok' => true];
     }

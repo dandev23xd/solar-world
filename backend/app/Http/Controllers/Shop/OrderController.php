@@ -21,26 +21,30 @@ class OrderController extends Controller
     {
         $customer = $this->customer($request);
 
-        return Sale::with(['product', 'shipment'])
+        return Sale::withoutGlobalScope('active')
+            ->with(['product', 'shipment' => fn ($query) => $query->withoutGlobalScope('active')])
             ->where('customer_id', $customer->id)
             ->orderByDesc('id')
             ->get()
             ->map(function ($sale) {
                 $subtotal = $sale->qty * $sale->product->price;
                 $shipping = (float) ($sale->shipment?->cost ?? 0);
+                $cancelled = $sale->status === 'Cancelled';
 
                 return [
                     'id' => $sale->id,
                     'sale_date' => $sale->sale_date,
                     'product' => $sale->product->name,
                     'category' => $sale->product->category,
+                    'image_url' => $sale->product->image_url,
                     'qty' => $sale->qty,
                     'subtotal' => $subtotal,
                     'shipping' => $shipping,
                     'total' => $subtotal + $shipping,
                     'est_delivery' => $sale->est_delivery,
                     'status' => $sale->status,
-                    'can_cancel' => $this->canCancel($sale),
+                    'stage' => $cancelled ? 'Cancelled' : ($sale->shipment?->status ?? 'Preparing'),
+                    'can_cancel' => ! $cancelled && $this->canCancel($sale),
                 ];
             });
     }
@@ -109,7 +113,8 @@ class OrderController extends Controller
 
         DB::transaction(function () use ($sale) {
             Product::where('id', $sale->product_id)->increment('stock', $sale->qty);
-            $sale->delete();
+            $sale->shipment?->update(['status' => 'Cancelled']);
+            $sale->update(['status' => 'Cancelled']);
         });
 
         return response()->json(['ok' => true]);
@@ -118,7 +123,7 @@ class OrderController extends Controller
     private function canCancel($sale): bool
     {
         return $sale->status === 'Pending'
-            && (! $sale->shipment || $sale->shipment->status === 'Preparing');
+            && (! $sale->shipment || in_array($sale->shipment->status, ['Preparing', 'Packed'], true));
     }
 
     private function customer(Request $request)

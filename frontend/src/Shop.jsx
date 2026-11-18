@@ -20,6 +20,18 @@ const FEATURES = [
   { Icon: ReceiptIcon, title: 'Cancel before it ships', text: 'Changed your mind? Cancel from My orders.' },
 ];
 const SHIP = { Luzon: { fee: 250, days: 3 }, Visayas: { fee: 150, days: 5 }, Mindanao: { fee: 350, days: 7 } };
+const STAGES = ['Placed', 'Packed', 'Shipped', 'Delivered'];
+const STAGE_OF = { Preparing: 0, Packed: 1, Shipped: 2, Delivered: 3 };
+const stageIndex = o => STAGE_OF[o.stage] ?? 0;
+const isCancelled = o => o.stage === 'Cancelled';
+const ORDER_TABS = [['all', 'All'], ['active', 'Active'], ['delivered', 'Delivered'], ['cancelled', 'Cancelled']];
+const inTab = (o, k) => {
+  if (k === 'all') return true;
+  if (k === 'cancelled') return isCancelled(o);
+  if (isCancelled(o)) return false;
+  return k === 'delivered' ? stageIndex(o) === 3 : stageIndex(o) < 3;
+};
+const niceDate = d => (d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-');
 const NO_PROFILE = { name: '', phone: '', address: '', region: 'Luzon', type: 'Residential', email: '' };
 const NO_PW = { current: '', next: '', again: '' };
 const NO_EMAIL = { email: '', current: '' };
@@ -42,6 +54,7 @@ export default function Shop({ user, onLogout }) {
   const [open, setOpen] = useState(null), [draft, setDraft] = useState(''), [shownName, setShownName] = useState(user.name);
   const [loaded, setLoaded] = useState(false), [loadErr, setLoadErr] = useState(''), [region, setRegion] = useState('');
   const [viewId, setViewId] = useState(null), [qty, setQty] = useState(1), [toast, setToast] = useState(0);
+  const [orderTab, setOrderTab] = useState('all');
   const lockSeen = useRef(false);
 
   const lockCheck = e => {
@@ -164,6 +177,7 @@ export default function Shop({ user, onLogout }) {
     setBusy(false);
   };
 
+  const shownOrders = orders.filter(o => inTab(o, orderTab));
   const counts = products.reduce((m, p) => ({ ...m, [p.category]: (m[p.category] || 0) + 1 }), {});
   const filtered = products.filter(p => (cat === 'All' || p.category === cat) && p.name.toLowerCase().includes(q.toLowerCase()));
   const shown = sorters[sort] ? [...filtered].sort(sorters[sort]) : filtered;
@@ -306,21 +320,61 @@ export default function Shop({ user, onLogout }) {
           </div>
         </>}
 
-        {tab === 'orders' && <div className="card" style={{ marginTop: 24 }}>
-          <h3>My orders</h3>
-          {orders.length
-            ? <div className="table-wrap"><table className="rtable">
-                <thead><tr><th>Order</th><th>Date</th><th>Product</th><th>Category</th><th>Qty</th><th>Subtotal</th><th>Shipping</th><th>Total</th><th>Est. delivery</th><th>Action</th></tr></thead>
-                <tbody>{orders.map(o => <tr key={o.id}>
-                  <td data-label="Order"><b>#{o.id}</b></td><td data-label="Date">{o.sale_date}</td><td data-label="Product">{o.product}</td>
-                  <td data-label="Category">{o.category}</td><td data-label="Qty">{o.qty}</td><td data-label="Subtotal">{peso(o.subtotal)}</td><td data-label="Shipping">{peso(o.shipping)}</td><td data-label="Total"><b>{peso(o.total)}</b></td>
-                  <td data-label="Est. delivery">{o.est_delivery ?? '-'}</td>
-                  <td data-label="Action">{o.can_cancel ? <button className="danger" disabled={busy} onClick={() => cancelOrder(o)}>Cancel order</button> : '-'}</td>
-                </tr>)}</tbody>
-              </table></div>
-            : <div className="empty"><ReceiptIcon size={32} /><p>You have not placed any orders yet.</p><button className="active" onClick={goShop}>Start shopping</button></div>}
-          {orders.length > 0 && <p className="muted small" style={{ marginTop: 12 }}>Total spent: <b>{peso(orders.reduce((s, o) => s + Number(o.total), 0))}</b></p>}
-        </div>}
+        {tab === 'orders' && <section className="orders">
+          <h2 className="orders-title">My orders</h2>
+          <p className="muted">Track your orders and see what you paid</p>
+          <div className="seg order-tabs" role="tablist">
+            {ORDER_TABS.map(([k, label]) => (
+              <button key={k} role="tab" aria-selected={orderTab === k} className={orderTab === k ? 'on' : ''} onClick={() => setOrderTab(k)}>
+                {label} ({orders.filter(o => inTab(o, k)).length})
+              </button>
+            ))}
+          </div>
+
+          {!orders.length && <div className="card empty"><ReceiptIcon size={32} /><p>You have not placed any orders yet.</p><button className="active" onClick={goShop}>Start shopping</button></div>}
+          {orders.length > 0 && !shownOrders.length && <div className="card empty"><ReceiptIcon size={32} /><p>No orders here yet.</p></div>}
+
+          {shownOrders.map(o => {
+            const step = stageIndex(o);
+            const off = isCancelled(o);
+            return (
+              <article className={'order-card' + (off ? ' cancelled' : '')} key={o.id}>
+                <div className="order-main">
+                  <div className="order-top">
+                    <div><b className="order-no">Order #{o.id}</b> <span className="muted">· {niceDate(o.sale_date)}</span></div>
+                    <span className={'obadge ' + (off ? 'off' : 's' + step)}>{off ? 'Cancelled' : STAGES[step]}</span>
+                  </div>
+                  <div className="order-item">
+                    <img src={pic(o)} alt="" onError={fallback(o)} />
+                    <div>
+                      <b>{o.product}</b>
+                      <div className="muted">{o.category} · Qty {o.qty}</div>
+                    </div>
+                  </div>
+                  {off ? <div className="order-off">You cancelled this order. The item went back to stock and you will not be charged.</div> : <>
+                  <ol className="ostep" aria-label="Order progress">
+                    {STAGES.map((s, i) => (
+                      <li key={s} className={i <= step ? 'done' : ''} aria-current={i === step ? 'step' : undefined}>
+                        <span className="odot">{i <= step ? '✓' : ''}</span>{s}
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="muted">{step === 3 ? 'Delivered' : 'Estimated delivery'}: <b className="fg">{niceDate(o.est_delivery)}</b></div>
+                  </>}
+                </div>
+                <div className="order-pay">
+                  <b>Payment summary</b>
+                  <div className="pay-row"><span>Subtotal</span><span>{peso(o.subtotal)}</span></div>
+                  <div className="pay-row"><span>Shipping</span><span>{peso(o.shipping)}</span></div>
+                  <div className="pay-total"><span>Total</span><span className={off ? 'struck' : undefined}>{peso(o.total)}</span></div>
+                  {o.can_cancel && <button className="danger wide" disabled={busy} onClick={() => cancelOrder(o)}>Cancel order</button>}
+                </div>
+              </article>
+            );
+          })}
+
+          {orders.length > 0 && <p className="muted small">Total spent: <b>{peso(orders.filter(o => !isCancelled(o)).reduce((s, o) => s + Number(o.total), 0))}</b></p>}
+        </section>}
 
         {tab === 'settings' && <div className="card" style={{ marginTop: 24 }}>
           {loadErr && (

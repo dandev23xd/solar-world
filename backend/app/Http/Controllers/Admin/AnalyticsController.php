@@ -506,6 +506,7 @@ class AnalyticsController extends Controller
             'profit' => $this->profit($sales),
             'orders' => $sales->count(),
             'units' => (int) $sales->sum('qty'),
+            'shipping' => round((float) Shipment::whereIn('sale_id', $sales->pluck('id'))->sum('cost'), 2),
             'buyers' => $sales->pluck('customer_id')->unique()->count(),
         ];
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Sale extends Model
@@ -21,6 +22,11 @@ class Sale extends Model
     protected $casts = [
         'qty' => 'integer',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('active', fn (Builder $query) => $query->where('sales.status', '!=', 'Cancelled'));
+    }
 
     public function customer()
     {

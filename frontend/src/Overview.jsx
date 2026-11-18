@@ -107,7 +107,7 @@ export default function Overview() {
           <Kpi label="Revenue" value={peso(d.cur.revenue)} cur={d.cur.revenue} prev={d.prev.revenue} days={days} />
           <Kpi label="Profit" value={peso(d.cur.profit)} note={`${d.cur.revenue ? Math.round((d.cur.profit / d.cur.revenue) * 100) : 0}% margin`} />
           <Kpi label="Orders" value={d.cur.orders} cur={d.cur.orders} prev={d.prev.orders} days={days} />
-          <Kpi label="Units sold" value={d.cur.units} cur={d.cur.units} prev={d.prev.units} days={days} />
+          <Kpi label="Shipping collected" value={peso(d.cur.shipping)} cur={d.cur.shipping} prev={d.prev.shipping} days={days} />
           <Kpi label="Avg. order value" value={peso(aov(d.cur))} cur={aov(d.cur)} prev={aov(d.prev)} days={days} />
           <Kpi label="New customers" value={d.newCustomers.cur} note={`${d.customers.locked} locked`} />
         </div>

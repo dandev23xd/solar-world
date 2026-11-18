@@ -20,9 +20,10 @@ export const PAGES = {
   marketing: { name: 'marketing', title: 'Marketing', cols: ['id', 'channel', 'campaign', 'spend', 'leads', 'start_date'], money: ['spend'],
     fields: [{ k: 'channel', label: 'Channel', options: CHANNELS }, { k: 'campaign', label: 'Campaign' },
              { k: 'spend', label: 'Spend', type: 'number' }, { k: 'leads', label: 'Leads', type: 'number' }, { k: 'start_date', label: 'Start date', type: 'date' }] },
-  shipments: { name: 'shipments', title: 'Shipments', cols: ['id', 'sale_id', 'customer', 'phone', 'address', 'product', 'qty', 'region', 'price', 'cost', 'total', 'sale_date', 'est_delivery'], money: ['price', 'cost', 'total'],
+  shipments: { name: 'shipments', title: 'Shipments', cols: ['id', 'sale_id', 'customer', 'phone', 'address', 'product', 'qty', 'region', 'price', 'cost', 'total', 'sale_date', 'est_delivery', 'status'], money: ['price', 'cost', 'total'],
     fields: [{ k: 'region', label: 'Region', options: ['Luzon', 'Visayas', 'Mindanao'] },
-             { k: 'cost', label: 'Shipping cost', type: 'number' }] },
+             { k: 'cost', label: 'Shipping cost', type: 'number' },
+             { k: 'status', label: 'Status', options: ['Preparing', 'Packed', 'Shipped', 'Delivered'] }] },
 };
 const label = c => (c === 'cost' ? 'shipping fee' : c.replace('_', ' '));
 const peso = n => '₱' + Number(n || 0).toLocaleString();
