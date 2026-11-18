@@ -17,6 +17,24 @@ class DatabaseSeeder extends Seeder
             'role' => 'admin',
         ]);
 
+        $file = database_path('seeders/products.json');
+
+        if (is_file($file)) {
+            foreach (json_decode(file_get_contents($file), true) as $product) {
+                Product::create([
+                    'name' => $product['name'],
+                    'category' => $product['category'],
+                    'price' => $product['price'],
+                    'unit_cost' => $product['unit_cost'],
+                    'stock' => $product['stock'],
+                    'image_url' => $product['image_url'] ?? null,
+                    'description' => $product['description'] ?? null,
+                ]);
+            }
+
+            return;
+        }
+
         $products = [
             ['100W Monocrystalline Solar Panel', 'Panel', 1800, 8],
             ['550W Solar Panel', 'Panel', 8500, 9],
